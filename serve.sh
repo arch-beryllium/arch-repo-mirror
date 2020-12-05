@@ -1,2 +1,3 @@
 #!/bin/bash
-docker run -p 8080:80 -v "$(pwd)/mirror:/usr/share/nginx/html" nginx
+cd mirror || exit
+python3 -m http.server 8080

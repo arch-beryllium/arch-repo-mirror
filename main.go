@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,14 +29,8 @@ var configs = []Config{
 		BaseAddress: "https://repo.lohl1kohl.de/$repo/$arch",
 		Format:      "tar.xz",
 		Repos: map[string][]string{
-			"beryllium": {"aarch64"},
-		},
-	},
-	{
-		BaseAddress: "https://ftp.halifax.rwth-aachen.de/manjaro/arm-unstable/$repo/$arch",
-		Format:      "tar.gz",
-		Repos: map[string][]string{
-			"mobile": {"aarch64"},
+			"beryllium":     {"aarch64"},
+			"plasma-mobile": {"aarch64"},
 		},
 	},
 	{
@@ -86,12 +79,13 @@ func main() {
 				var tmpDir string
 				tmpDir, err = ioutil.TempDir("", "arch-repo-mirror-*")
 				if err != nil {
-					log.Fatal(err)
+					fmt.Printf("%v\n", err)
+					os.Exit(1)
 				}
 
 				err = archiver.Unarchive(dbFilePath, tmpDir)
 				if err != nil {
-					fmt.Printf("Failed to read %s: %v", dbFilePath, err)
+					fmt.Printf("Failed to read %s: %v\n", dbFilePath, err)
 					os.Exit(1)
 				}
 				var dirs []os.FileInfo
@@ -124,7 +118,7 @@ func main() {
 				}
 				err = os.RemoveAll(tmpDir)
 				if err != nil {
-					fmt.Printf("Failed to remove %s: %v", tmpDir, err)
+					fmt.Printf("Failed to remove %s: %v\n", tmpDir, err)
 					os.Exit(1)
 				}
 			}
@@ -137,7 +131,7 @@ func printDownloadPercent(done chan chan struct{}, path string, expectedSize int
 	for {
 		fi, err := os.Stat(path)
 		if err != nil {
-			fmt.Printf("%v", err)
+			fmt.Printf("%v\n", err)
 		}
 
 		size := fi.Size()
@@ -197,7 +191,7 @@ func downloadFile(filepath string, url string) error {
 	<-doneCompletedCh
 
 	elapsed := time.Since(start)
-	log.Printf("\033[2K\rDownload completed in %.2fs", elapsed.Seconds())
+	fmt.Printf("\033[2K\rDownload completed in %.2fs\n", elapsed.Seconds())
 	return nil
 }
 
