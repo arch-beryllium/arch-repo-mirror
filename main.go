@@ -34,7 +34,7 @@ var configs = []Config{
 		},
 	},
 	{
-		BaseAddress: "https://ftp.halifax.rwth-aachen.de/archlinux-arm/$arch/$repo",
+		BaseAddress: "https://mirror.archlinuxarm.org/$arch/$repo",
 		Format:      "tar.gz",
 		Repos: map[string][]string{
 			"alarm":     {"aarch64"},
