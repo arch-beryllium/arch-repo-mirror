@@ -30,11 +30,11 @@ var configs = []Config{
 		Format:      "tar.xz",
 		Repos: map[string][]string{
 			"beryllium":     {"aarch64"},
-			"plasma-mobile": {"aarch64"},
+			//"plasma-mobile": {"aarch64"},
 		},
 	},
 	{
-		BaseAddress: "https://mirror.archlinuxarm.org/$arch/$repo",
+		BaseAddress: "http://mirror.archlinuxarm.org/$arch/$repo",
 		Format:      "tar.gz",
 		Repos: map[string][]string{
 			"alarm":     {"aarch64"},
