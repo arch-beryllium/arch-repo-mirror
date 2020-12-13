@@ -19,108 +19,93 @@ var configs = []Config{
 	{
 		BaseAddress: "https://p64.arikawa-hi.me/$repo/$arch",
 		Format:      "tar.xz",
-		Repos: map[string][]string{
-			"danctnix": {"aarch64"},
-			"phosh":    {"aarch64"},
-			"pine64":   {"aarch64"},
-		},
+		Repos:       []string{"danctnix", "phosh", "pine64"},
 	},
 	{
 		BaseAddress: "https://repo.lohl1kohl.de/$repo/$arch",
 		Format:      "tar.xz",
-		Repos: map[string][]string{
-			"beryllium":     {"aarch64"},
-			//"plasma-mobile": {"aarch64"},
-		},
+		Repos:       []string{"beryllium", "plasma-mobile"},
 	},
 	{
 		BaseAddress: "http://mirror.archlinuxarm.org/$arch/$repo",
 		Format:      "tar.gz",
-		Repos: map[string][]string{
-			"alarm":     {"aarch64"},
-			"aur":       {"aarch64"},
-			"community": {"aarch64"},
-			"core":      {"aarch64"},
-			"extra":     {"aarch64"},
-		},
+		Repos:       []string{"alarm", "aur", "community", "core", "extra"},
 	},
 }
 
 type Config struct {
-	BaseAddress string              `yaml:"base_address"`
-	Format      string              `yaml:"format"`
-	Repos       map[string][]string `yaml:"repos"`
+	BaseAddress string
+	Format      string
+	Repos       []string
 }
 
 func main() {
 	for _, config := range configs {
-		for repo, architectures := range config.Repos {
-			for _, architecture := range architectures {
-				dirPath := filepath.Join("mirror", repo, architecture)
-				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					err = os.MkdirAll(dirPath, 0755)
-					if err != nil {
-						fmt.Printf("Failed to create %s: %v\n", dirPath, err)
-						os.Exit(1)
-					}
-				}
-				dbFilePath := filepath.Join(dirPath, fmt.Sprintf("%s.%s", repo, config.Format))
-				dbFileURL := fmt.Sprintf("%s/%s.db", buildURL(config.BaseAddress, repo, architecture), repo)
-				err := downloadFile(dbFilePath, dbFileURL)
+		for _, repo := range config.Repos {
+			dirPath := filepath.Join("mirror", repo, "aarch64")
+			if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+				err = os.MkdirAll(dirPath, 0755)
 				if err != nil {
-					fmt.Printf("Failed to download %s: %v\n", dbFileURL, err)
+					fmt.Printf("Failed to create %s: %v\n", dirPath, err)
 					os.Exit(1)
 				}
-				err = copyFile(dbFilePath, filepath.Join(dirPath, fmt.Sprintf("%s.db", repo)))
-				if err != nil {
-					fmt.Printf("Failed to copy %s : %v\n", dbFilePath, err)
-					os.Exit(1)
-				}
-				var tmpDir string
-				tmpDir, err = ioutil.TempDir("", "arch-repo-mirror-*")
-				if err != nil {
-					fmt.Printf("%v\n", err)
-					os.Exit(1)
-				}
+			}
+			dbFilePath := filepath.Join(dirPath, fmt.Sprintf("%s.%s", repo, config.Format))
+			dbFileURL := fmt.Sprintf("%s/%s.db", buildURL(config.BaseAddress, repo), repo)
+			err := downloadFile(dbFilePath, dbFileURL)
+			if err != nil {
+				fmt.Printf("Failed to download %s: %v\n", dbFileURL, err)
+				os.Exit(1)
+			}
+			err = copyFile(dbFilePath, filepath.Join(dirPath, fmt.Sprintf("%s.db", repo)))
+			if err != nil {
+				fmt.Printf("Failed to copy %s : %v\n", dbFilePath, err)
+				os.Exit(1)
+			}
+			var tmpDir string
+			tmpDir, err = ioutil.TempDir("", "arch-repo-mirror-*")
+			if err != nil {
+				fmt.Printf("%v\n", err)
+				os.Exit(1)
+			}
 
-				err = archiver.Unarchive(dbFilePath, tmpDir)
+			err = archiver.Unarchive(dbFilePath, tmpDir)
+			if err != nil {
+				fmt.Printf("Failed to read %s: %v\n", dbFilePath, err)
+				os.Exit(1)
+			}
+			var dirs []os.FileInfo
+			dirs, err = ioutil.ReadDir(tmpDir)
+			for _, dir := range dirs {
+				descFilePath := filepath.Join(tmpDir, dir.Name(), "desc")
+				var content []byte
+				content, err = ioutil.ReadFile(descFilePath)
 				if err != nil {
-					fmt.Printf("Failed to read %s: %v\n", dbFilePath, err)
+					fmt.Printf("Failed to read %s: %v\n", descFilePath, err)
 					os.Exit(1)
 				}
-				var dirs []os.FileInfo
-				dirs, err = ioutil.ReadDir(tmpDir)
-				for _, dir := range dirs {
-					descFilePath := filepath.Join(tmpDir, dir.Name(), "desc")
-					var content []byte
-					content, err = ioutil.ReadFile(descFilePath)
+				fileName := ""
+				lines := strings.Split(string(content), "\n")
+				for i, line := range lines {
+					if line == "%FILENAME%" {
+						fileName = lines[i+1]
+						break
+					}
+				}
+				filePath := filepath.Join(dirPath, fileName)
+				fileURL := fmt.Sprintf("%s/%s", buildURL(config.BaseAddress, repo), fileName)
+				if _, err = os.Stat(filePath); os.IsNotExist(err) {
+					err = downloadFile(filePath, fileURL)
 					if err != nil {
-						fmt.Printf("Failed to read %s: %v\n", descFilePath, err)
+						fmt.Printf("Failed to download %s: %v\n", fileURL, err)
 						os.Exit(1)
 					}
-					fileName := ""
-					lines := strings.Split(string(content), "\n")
-					for i, line := range lines {
-						if line == "%FILENAME%" {
-							fileName = lines[i+1]
-							break
-						}
-					}
-					filePath := filepath.Join(dirPath, fileName)
-					fileURL := fmt.Sprintf("%s/%s", buildURL(config.BaseAddress, repo, architecture), fileName)
-					if _, err = os.Stat(filePath); os.IsNotExist(err) {
-						err = downloadFile(filePath, fileURL)
-						if err != nil {
-							fmt.Printf("Failed to download %s: %v\n", fileURL, err)
-							os.Exit(1)
-						}
-					}
 				}
-				err = os.RemoveAll(tmpDir)
-				if err != nil {
-					fmt.Printf("Failed to remove %s: %v\n", tmpDir, err)
-					os.Exit(1)
-				}
+			}
+			err = os.RemoveAll(tmpDir)
+			if err != nil {
+				fmt.Printf("Failed to remove %s: %v\n", tmpDir, err)
+				os.Exit(1)
 			}
 		}
 	}
@@ -195,9 +180,9 @@ func downloadFile(filepath string, url string) error {
 	return nil
 }
 
-func buildURL(baseAddress, repo, architecture string) string {
+func buildURL(baseAddress, repo string) string {
 	baseAddress = strings.ReplaceAll(baseAddress, "$repo", repo)
-	baseAddress = strings.ReplaceAll(baseAddress, "$arch", architecture)
+	baseAddress = strings.ReplaceAll(baseAddress, "$arch", "aarch64")
 	return baseAddress
 }
 

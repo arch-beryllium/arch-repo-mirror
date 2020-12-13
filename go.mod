@@ -11,5 +11,4 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/ulikunitz/xz v0.5.8 // indirect
-	gopkg.in/yaml.v2 v2.3.0
 )
