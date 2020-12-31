@@ -76,6 +76,11 @@ func main() {
 			}
 			var dirs []os.FileInfo
 			dirs, err = ioutil.ReadDir(tmpDir)
+			if err != nil {
+				fmt.Printf("Failed to read dir %s: %v\n", tmpDir, err)
+				os.Exit(1)
+			}
+			var fileNames []string
 			for _, dir := range dirs {
 				descFilePath := filepath.Join(tmpDir, dir.Name(), "desc")
 				var content []byte
@@ -92,12 +97,37 @@ func main() {
 						break
 					}
 				}
+				fileNames = append(fileNames, fileName)
 				filePath := filepath.Join(dirPath, fileName)
 				fileURL := fmt.Sprintf("%s/%s", buildURL(config.BaseAddress, repo), fileName)
 				if _, err = os.Stat(filePath); os.IsNotExist(err) {
 					err = downloadFile(filePath, fileURL)
 					if err != nil {
 						fmt.Printf("Failed to download %s: %v\n", fileURL, err)
+						os.Exit(1)
+					}
+				}
+			}
+			files, err := ioutil.ReadDir(dirPath)
+			if err != nil {
+				fmt.Printf("Failed to read dir %s: %v\n", tmpDir, err)
+				os.Exit(1)
+			}
+			for _, file := range files {
+				if file.Name() == fmt.Sprintf("%s.db", repo) || file.Name() == fmt.Sprintf("%s.%s", repo, config.Format) {
+					continue
+				}
+				found := false
+				for _, fileName := range fileNames {
+					if file.Name() == fileName {
+						found = true
+					}
+				}
+				if !found {
+					fmt.Printf("Deleting %s\n", file.Name())
+					err = os.Remove(filepath.Join(dirPath, file.Name()))
+					if err != nil {
+						fmt.Printf("Failed to remove %s: %v\n", tmpDir, err)
 						os.Exit(1)
 					}
 				}
