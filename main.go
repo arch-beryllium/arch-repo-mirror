@@ -24,7 +24,12 @@ var configs = []Config{
 	{
 		BaseAddress: "https://repo.lohl1kohl.de/$repo/$arch",
 		Format:      "tar.xz",
-		Repos:       []string{"beryllium", "plasma-mobile"},
+		Repos:       []string{"beryllium"},
+	},
+	{
+		BaseAddress: "https://raw.githubusercontent.com/arch-beryllium/plasma-mobile-packages/packages",
+		Format:      "tar.xz",
+		Repos:       []string{"plasma-mobile"},
 	},
 	{
 		BaseAddress: "http://mirror.archlinuxarm.org/$arch/$repo",
